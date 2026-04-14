@@ -1,0 +1,10 @@
+AGENTS.md
+opencode.json
+*~
+*.swp
+*.pyc
+cb_2023_us_state_20m.*
+__pycache__/
+temp/
+docs/
+.DS_Store
