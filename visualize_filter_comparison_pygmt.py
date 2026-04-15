@@ -6,6 +6,7 @@ Uses pygmt_exam.py styling conventions.
 
 import pygmt
 import pandas as pd
+import geopandas as gpd
 import numpy as np
 
 STATE = "California"
@@ -13,10 +14,10 @@ START_TIME = "2020-01-01"
 END_TIME = "2023-01-01"
 
 
-df_raw_file = STATE+"_earthquakes_raw"+"_"+START_TIME+"_"+END_TIME+"_500k.csv"  
-df_filtered_file = STATE+"_earthquakes_filtered"+"_"+START_TIME+"_"+END_TIME+"_500k.csv"
-state_boundary_file = STATE+"_boundary_coordinates_500k.csv"
-
+df_raw_file = "outputs/"+STATE+"_earthquakes_raw"+"_"+START_TIME+"_"+END_TIME+"_500k.csv"  
+df_filtered_file = "outputs/"+STATE+"_earthquakes_filtered"+"_"+START_TIME+"_"+END_TIME+"_500k.csv"
+state_boundary_file = "outputs/"+STATE+"_boundary_coordinates_500k.csv"
+county_boundary_shapefile = "data/raw/county_boundaires/CA_Counties.shp" 
 
 df_raw = pd.read_csv(df_raw_file)
 df_filtered = pd.read_csv(df_filtered_file)
@@ -43,6 +44,32 @@ bbox_y = [state_boundary["latitude"].min(),
           state_boundary["latitude"].min(), 
           state_boundary["latitude"].min(), 
 ]
+
+# Extract state boundary coordinates
+county_gdf = gpd.read_file(county_boundary_shapefile)
+county_gdf = county_gdf.to_crs("EPSG:4326")
+
+county_boundary_xall = []
+county_boundary_yall = []
+for _, row in county_gdf.iterrows():
+    geom = row.geometry
+
+    if geom.geom_type == "Polygon":
+        x,y = geom.exterior.xy
+        county_boundary_xall.extend(x)
+        county_boundary_yall.extend(y)
+        county_boundary_xall.append(np.nan)
+        county_boundary_yall.append(np.nan)
+
+    elif geom.geom_type == "MultiPolygon":
+        for poly in geom.geoms:
+            x,y = poly.exterior.xy
+            county_boundary_xall.extend(x)
+            county_boundary_yall.extend(y)
+            county_boundary_xall.append(np.nan)
+            county_boundary_yall.append(np.nan)
+
+
 
 
 time_label = f"Data: {START_TIME} to {END_TIME}"
@@ -85,11 +112,12 @@ with fig.subplot(
             borders="2/0.5p,gray40",
             shorelines="0.5p,gray40",
         )
+        fig.plot(x=county_boundary_xall, y=county_boundary_yall, pen="0.5p,black")
         fig.plot(x=state_boundary['longitude'], y=state_boundary['latitude'], pen="1p,black")
-        fig.plot(x=bbox_x, y=bbox_y, pen="1.5p,red,--")
+        fig.plot(x=bbox_x, y=bbox_y, pen="1.2p,GRAY23,--")
         fig.plot(
             x=df_raw["longitude"], y=df_raw["latitude"],
-            style="c0.15c", fill="red", transparency=30,
+            style="c0.15c", fill="GRAY40", transparency=30,
         )
         fig.text(
             x=region[0] + 0.3, y=region[3] - 0.4,
@@ -112,12 +140,13 @@ with fig.subplot(
             borders="2/0.5p,gray40",
             shorelines="0.5p,gray40",
         )
+        fig.plot(x=bbox_x, y=bbox_y, pen="1.2p,GRAY23,--")
+        fig.plot(x=county_boundary_xall, y=county_boundary_yall, pen="0.5p,black")
         fig.plot(x=state_boundary['longitude'], y=state_boundary['latitude'], pen="1.5p,black")
-        fig.plot(x=bbox_x, y=bbox_y, pen="1.5p,darkgray,--")
         fig.plot(
             x=df_filtered["longitude"], y=df_filtered["latitude"],
-            style="c0.15c", fill="blue", transparency=20,
-        )
-fig.savefig(STATE+"_eq_filter_comparison.jpg", dpi=800)
-print(f"\nSaved: "+ STATE + "_eq_filter_comparison.jpg")
+            style="c0.15c", fill="red", transparency=30,
+        )    
+fig.savefig("outputs/"+STATE+"_eq_filter_comparison.jpg", dpi=800)
+print(f"\nSaved: outputs/"+ STATE + "_eq_filter_comparison.jpg")
     
