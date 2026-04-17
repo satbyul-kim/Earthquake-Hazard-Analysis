@@ -5,70 +5,96 @@ Uses pygmt_exam.py styling conventions.
 """
 
 import pygmt
+import numpy as np
 import pandas as pd
 import geopandas as gpd
-import numpy as np
+from pathlib import Path
+from src.data.location_params import (
+     get_state_boundary,
+     extract_boundary_coordinates,
+)
+
 
 STATE = "California"
-START_TIME = "2020-01-01"
-END_TIME = "2023-01-01"
+START_TIME = "2005-01-01"
+END_TIME = "2026-01-01"
+MIN_MAGNITUDE = 3.5
 
 
-df_raw_file = "outputs/"+STATE+"_earthquakes_raw"+"_"+START_TIME+"_"+END_TIME+"_500k.csv"  
-df_filtered_file = "outputs/"+STATE+"_earthquakes_filtered"+"_"+START_TIME+"_"+END_TIME+"_500k.csv"
-state_boundary_file = "outputs/"+STATE+"_boundary_coordinates_500k.csv"
-county_boundary_shapefile = "data/raw/county_boundaires/CA_Counties.shp" 
+OUTPUT_DIR = Path("outputs")
+RAW_DATA_DIR = Path("data/raw")
+minmag_str = str(MIN_MAGNITUDE).replace(".", "p")
 
+
+# Data path
+df_raw_file = Path("outputs") / f"{STATE}_earthquakes_raw_{START_TIME}_{END_TIME}_{minmag_str}.csv"
+df_filtered_file = Path("outputs") / f"{STATE}_earthquakes_filtered_{START_TIME}_{END_TIME}_{minmag_str}.csv"
+
+state_boundary_shapefile = Path("data/raw/state_boundaries") / "cb_2023_us_state_500k.shp"
+county_boundary_shapefile = Path("data/raw/county_boundaries") / "CA_Counties.shp"
+
+state_coords_file = Path("outputs") / f"{STATE}_boundary_coordinates.csv"
+county_coords_file = OUTPUT_DIR/ f"{STATE}_county_coordinates.csv"
+
+fig_file = OUTPUT_DIR/ f"{STATE}_eq_filter_comparison_{START_TIME}_{END_TIME}_{minmag_str}.jpg"
+
+# Read data
 df_raw = pd.read_csv(df_raw_file)
 df_filtered = pd.read_csv(df_filtered_file)
-state_boundary = pd.read_csv(state_boundary_file)
 
+
+# Extract county boundary coordinates
+if state_coords_file.exists():
+    state_coords = pd.read_csv(state_coords_file)
+    state_boundary_xall = state_coords["longitude"].tolist()
+    state_boundary_yall = state_coords["latitude"].tolist() 
+    print(f"The state boundary file already exists")
+else:
+    state_gdf = get_state_boundary(state_boundary_shapefile, STATE)
+    state_boundary_xall, state_boundary_yall = extract_boundary_coordinates(state_gdf)
+    pd.DataFrame({
+        "longitude": state_boundary_xall,
+        "latitude": state_boundary_yall,
+    }).to_csv(state_coords_file, index=False)
+    print(f"The state boundary file is created")
+
+
+# Extract county boundary coordinates
+if county_coords_file.exists():
+    county_coords = pd.read_csv(county_coords_file)
+    county_boundary_xall = county_coords["longitude"].tolist()
+    county_boundary_yall = county_coords["latitude"].tolist()
+    print(f"The county boundary file already exists")
+else:
+    county_gdf = gpd.read_file(county_boundary_shapefile)
+    county_gdf = county_gdf.to_crs("EPSG:4326")
+    county_boundary_xall, county_boundary_yall = extract_boundary_coordinates(county_gdf)
+    pd.DataFrame({
+        "longitude": county_boundary_xall,
+        "latitude": county_boundary_yall,
+    }).to_csv(county_coords_file, index=False)
+    print(f"The county boundary file is created")
 
 
 region=[
-    state_boundary["longitude"].min()-1, 
-    state_boundary["longitude"].max()+1,
-    state_boundary["latitude"].min()-1, 
-    state_boundary["latitude"].max()+1,
+    min(state_boundary_xall)-1, 
+    max(state_boundary_xall)+1,
+    min(state_boundary_yall)-1, 
+    max(state_boundary_yall)+1,
 ]
 
-bbox_x = [state_boundary["longitude"].min(), 
-          state_boundary["longitude"].min(), 
-          state_boundary["longitude"].max(), 
-          state_boundary["longitude"].max(), 
-          state_boundary["longitude"].min(), 
+bbox_x = [min(state_boundary_xall), 
+          min(state_boundary_xall), 
+          max(state_boundary_xall), 
+          max(state_boundary_xall), 
+          min(state_boundary_xall), 
 ]
-bbox_y = [state_boundary["latitude"].min(), 
-          state_boundary["latitude"].max(), 
-          state_boundary["latitude"].max(), 
-          state_boundary["latitude"].min(), 
-          state_boundary["latitude"].min(), 
+bbox_y = [min(state_boundary_yall), 
+          max(state_boundary_yall), 
+          max(state_boundary_yall), 
+          min(state_boundary_yall), 
+          min(state_boundary_yall), 
 ]
-
-# Extract state boundary coordinates
-county_gdf = gpd.read_file(county_boundary_shapefile)
-county_gdf = county_gdf.to_crs("EPSG:4326")
-
-county_boundary_xall = []
-county_boundary_yall = []
-for _, row in county_gdf.iterrows():
-    geom = row.geometry
-
-    if geom.geom_type == "Polygon":
-        x,y = geom.exterior.xy
-        county_boundary_xall.extend(x)
-        county_boundary_yall.extend(y)
-        county_boundary_xall.append(np.nan)
-        county_boundary_yall.append(np.nan)
-
-    elif geom.geom_type == "MultiPolygon":
-        for poly in geom.geoms:
-            x,y = poly.exterior.xy
-            county_boundary_xall.extend(x)
-            county_boundary_yall.extend(y)
-            county_boundary_xall.append(np.nan)
-            county_boundary_yall.append(np.nan)
-
 
 
 
@@ -113,7 +139,7 @@ with fig.subplot(
             shorelines="0.5p,gray40",
         )
         fig.plot(x=county_boundary_xall, y=county_boundary_yall, pen="0.5p,black")
-        fig.plot(x=state_boundary['longitude'], y=state_boundary['latitude'], pen="1p,black")
+        fig.plot(x=state_boundary_xall, y=state_boundary_yall, pen="1p,black")
         fig.plot(x=bbox_x, y=bbox_y, pen="1.2p,GRAY23,--")
         fig.plot(
             x=df_raw["longitude"], y=df_raw["latitude"],
@@ -142,11 +168,11 @@ with fig.subplot(
         )
         fig.plot(x=bbox_x, y=bbox_y, pen="1.2p,GRAY23,--")
         fig.plot(x=county_boundary_xall, y=county_boundary_yall, pen="0.5p,black")
-        fig.plot(x=state_boundary['longitude'], y=state_boundary['latitude'], pen="1.5p,black")
+        fig.plot(x=state_boundary_xall, y=state_boundary_yall, pen="1p,black")
         fig.plot(
             x=df_filtered["longitude"], y=df_filtered["latitude"],
             style="c0.15c", fill="red", transparency=30,
         )    
-fig.savefig("outputs/"+STATE+"_eq_filter_comparison.jpg", dpi=800)
-print(f"\nSaved: outputs/"+ STATE + "_eq_filter_comparison.jpg")
+fig.savefig(fig_file, dpi=800)
+print(f"\nSaved: {fig_file}")
     
