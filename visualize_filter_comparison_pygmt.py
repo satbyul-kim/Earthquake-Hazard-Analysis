@@ -20,21 +20,20 @@ START_TIME = "2005-01-01"
 END_TIME = "2026-01-01"
 MIN_MAGNITUDE = 3.5
 
-
 OUTPUT_DIR = Path("outputs")
 RAW_DATA_DIR = Path("data/raw")
 minmag_str = str(MIN_MAGNITUDE).replace(".", "p")
 
 
 # Data path
-df_raw_file = Path("outputs") / f"{STATE}_earthquakes_raw_{START_TIME}_{END_TIME}_{minmag_str}.csv"
-df_filtered_file = Path("outputs") / f"{STATE}_earthquakes_filtered_{START_TIME}_{END_TIME}_{minmag_str}.csv"
+df_raw_file = OUTPUT_DIR / f"{STATE}_earthquakes_raw_{START_TIME}_{END_TIME}_{minmag_str}.csv"
+df_filtered_file =  OUTPUT_DIR / f"{STATE}_earthquakes_filtered_{START_TIME}_{END_TIME}_{minmag_str}.csv"
 
-state_boundary_shapefile = Path("data/raw/state_boundaries") / "cb_2023_us_state_500k.shp"
-county_boundary_shapefile = Path("data/raw/county_boundaries") / "CA_Counties.shp"
+state_boundary_shapefile = RAW_DATA_DIR / "state_boundaries/cb_2023_us_state_500k.shp"
+county_boundary_shapefile = RAW_DATA_DIR / "county_boundaries/CA_Counties.shp"
 
-state_coords_file = Path("outputs") / f"{STATE}_boundary_coordinates.csv"
-county_coords_file = OUTPUT_DIR/ f"{STATE}_county_coordinates.csv"
+state_coords_file =  OUTPUT_DIR / f"{STATE}_boundary_coordinates.csv"
+county_coords_file = OUTPUT_DIR / f"{STATE}_county_coordinates.csv"
 
 fig_file = OUTPUT_DIR/ f"{STATE}_eq_filter_comparison_{START_TIME}_{END_TIME}_{minmag_str}.jpg"
 

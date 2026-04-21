@@ -3,7 +3,7 @@ Take each earthquake point and determine which California county it belongs to.
 
 """
 
-import os, sys
+import warnings
 import pandas as pd
 import geopandas as gpd
 from pathlib import Path
@@ -36,7 +36,6 @@ gdf_eq = gpd.GeoDataFrame(
 # Read earthquaek data
 gdf_county = gpd.read_file(county_file).to_crs("EPSG:4326")
 
-
 # Assign earthquakes in counties
 gdf_joined = gpd.sjoin(
     gdf_eq,
@@ -48,8 +47,21 @@ gdf_joined = gpd.sjoin(
 # Set the header
 df_output = gdf_joined[["id", "time", "longitude", "latitude", "magnitude", "depth", "place", "COUNTYFP", "GEOID", "NAMELSAD", "NAME"]]
 
-# Save output
-df_output.to_csv(output_file, index=False)
+df_unmatched = df_output[df_output["NAME"].isna()].copy()
 
+if not df_unmatched.empty:
+    unmatched_file = OUTPUT_DIR / f"{STATE}_earthquakes_unmatched_county_{START_TIME}_{END_TIME}_{minmag_str}.csv"
+    df_unmatched.to_csv(unmatched_file, index=False)
+    print(f"Saved unmatched earthquakes: {unmatched_file}")
+
+if len(df_unmatched) > 10 and (df_unmatched["magnitude"] > 5).any():
+	warnings.warn(
+        "More than 10 earthquakes were unmatched, and at least one unmatched event has magnitude > 4.5 "
+        "Check county geometry, CRS, and spatial join settings."
+    )
+
+
+# Save output
+df_output = df_output.dropna(subset=["NAME"]).copy()
+df_output.to_csv(output_file, index=False)
 print(f"Saved: {output_file}")
-print(df_output.head())
