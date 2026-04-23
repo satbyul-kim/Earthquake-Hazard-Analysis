@@ -1,7 +1,5 @@
 """
-Build hazard metrics for hazard map, score, charts, risk screening
-- Seismic event counts by county
-- Annualized event frequency
+Aggregate earthquake event data to the county level.
 
 """
 
