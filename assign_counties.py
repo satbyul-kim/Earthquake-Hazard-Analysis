@@ -9,7 +9,7 @@ import geopandas as gpd
 from pathlib import Path
 from src.data.location_params import get_state_boundary
 
-# Index
+# Configuration paramters 
 STATE = "California"
 START_TIME = "2005-01-01"
 END_TIME = "2026-01-01"

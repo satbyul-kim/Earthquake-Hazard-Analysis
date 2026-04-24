@@ -104,12 +104,6 @@ df_county_summary = df_county_summary.merge(
     how="left",
 )
 
-# Add metadata columns
-df_county_summary["state"] = STATE
-df_county_summary["start_time"] = START_TIME
-df_county_summary["end_time"] = END_TIME
-df_county_summary["min_magnitude"] = MIN_MAGNITUDE
-
 
 df_county_summary.to_csv(out_file, index=False)
 
